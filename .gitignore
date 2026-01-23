@@ -1,0 +1,17 @@
+# Claude Code ローカル設定
+.claude/*.local.*
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+.venv/
+
+# IDE
+.idea/
+.vscode/
+*.swp
+
+# Environment
+.env
+.env.local
