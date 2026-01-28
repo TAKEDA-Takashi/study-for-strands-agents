@@ -54,7 +54,7 @@ orchestrator = Agent(tools=[specialist_agent])
 
 ### 2. Graph
 
-開発者定義の有向グラフ。ノード間の依存関係に従って実行。
+開発者定義の有向グラフ。ノード間の依存関係に従って実行。DAGだけでなくループ（サイクル）もサポート。
 
 ```python
 from strands import Agent
@@ -78,9 +78,17 @@ def condition_func(state):
 builder.add_edge("node_a", "node_b", condition=condition_func)
 ```
 
+**ループ（サイクル）:**
+```python
+# 条件付きで前のノードに戻る
+builder.add_edge("review", "code", condition=needs_revision)  # 修正が必要なら戻る
+builder.add_edge("review", "approve", condition=is_approved)  # 承認なら進む
+builder.set_max_node_executions(3)  # 無限ループ防止
+```
+
 ### 3. Swarm
 
-自律的なエージェント群がhandoffで協調。
+自律的なエージェント群がhandoffで協調。エージェントが会話の文脈を理解して、自律的に引き継ぎ先を決定。
 
 ```python
 from strands import Agent
@@ -99,6 +107,14 @@ swarm = Swarm(
 result = swarm("タスク")
 ```
 
+**Graphとの違い:**
+- Graph: 条件関数（コード）でルーティングを定義
+- Swarm: エージェント（LLM）が文脈を理解してルーティングを判断
+
+**動的ルーティング:** 会話を通じて問題の本質が明らかになり、適切な担当者にhandoff
+
+**バックトラック:** 処理がうまくいかない場合、エージェントが自律的に前のステップに戻る
+
 ### 4. Workflow
 
 決定論的DAG。並列実行可能。strands-agents-toolsから使用。
@@ -110,7 +126,7 @@ result = swarm("タスク")
 
 ### 5. A2A (Agent-to-Agent)
 
-オープンプロトコルによるプラットフォーム間通信。
+オープンプロトコルによるプラットフォーム間通信。エージェントをHTTPサーバーとして公開。
 
 ```bash
 # 追加インストールが必要
@@ -134,6 +150,30 @@ from strands.multiagent.a2a import A2AClientToolProvider
 provider = A2AClientToolProvider(known_agent_urls=["http://127.0.0.1:9000"])
 agent = Agent(tools=provider.tools)
 ```
+
+### 6. Composite（複合パターン）
+
+Graph + Swarm + Agents as Tools を組み合わせた複雑なシステム。
+
+```python
+from strands import Agent
+from strands.multiagent.graph import GraphBuilder
+from strands.multiagent.swarm import Swarm
+
+# SwarmをGraphのノードとして使用
+planning_swarm = Swarm(nodes=[editor, marketer, writer], entry_point=editor)
+research_agent = Agent(tools=[search_tool, analyze_tool])  # Agents as Tools
+
+builder = GraphBuilder()
+builder.add_node(planning_swarm, "planning")  # Swarmを直接渡せる
+builder.add_node(research_agent, "research")
+builder.add_edge("planning", "research")
+graph = builder.build()
+```
+
+**ポイント:**
+- SwarmはMultiAgentBaseを継承しているため、`add_node`に直接渡せる
+- 関数ラップは不要
 
 ## 共有状態
 
