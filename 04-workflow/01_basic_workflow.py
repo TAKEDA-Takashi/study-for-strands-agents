@@ -2,7 +2,7 @@
 01_basic_workflow.py - 基本的なワークフロー
 
 workflowツールを使って、依存関係のあるタスクを順番に実行する。
-strands_toolsのworkflowはエージェントが使用するツール。
+agent.tool.workflow() でプログラム的にワークフローを制御。
 """
 
 from strands import Agent
@@ -15,34 +15,76 @@ model = BedrockModel(
 )
 
 # workflowツールを持つエージェント
-agent = Agent(
-    model=model,
-    system_prompt="""あなたはワークフロー管理の専門家です。
-workflowツールを使ってタスクを整理し、効率的に実行してください。
+agent = Agent(model=model, tools=[workflow])
 
-ワークフローの作成時は以下の形式を使用してください:
-- action: "create" でワークフローを作成
-- workflow_id: ワークフローの識別子
-- tasks: タスクのリスト（task_id, description, dependencies を含む）
+# Bedrockモデル設定（各タスクで使用）
+bedrock_settings = {
+    "model_id": "jp.anthropic.claude-haiku-4-5-20251001-v1:0",
+    "region_name": "ap-northeast-1",
+}
 
-タスクの依存関係を適切に設定し、順序立てて実行してください。""",
-    tools=[workflow],
+# タスク定義: 調査 → 分析 → レポート作成
+tasks = [
+    {
+        "task_id": "research",
+        "description": "再生可能エネルギー（太陽光、風力、水力）それぞれの特徴を1文ずつ、計3文で説明してください。",
+        "system_prompt": "簡潔に回答してください。ツールは使わず、あなたの知識だけで回答してください。",
+        "priority": 3,
+        "model_provider": "bedrock",
+        "model_settings": bedrock_settings,
+    },
+    {
+        "task_id": "analysis",
+        "description": "前のタスクの内容を踏まえ、日本での普及における課題を3点挙げてください。",
+        "system_prompt": "簡潔に回答してください。ツールは使わず、あなたの知識だけで回答してください。",
+        "dependencies": ["research"],
+        "priority": 3,
+        "model_provider": "bedrock",
+        "model_settings": bedrock_settings,
+    },
+    {
+        "task_id": "report",
+        "description": "これまでの内容を5行以内のサマリーにまとめてください。",
+        "system_prompt": "簡潔に回答してください。ツールは使わず、あなたの知識だけで回答してください。",
+        "dependencies": ["analysis"],
+        "priority": 5,
+        "model_provider": "bedrock",
+        "model_settings": bedrock_settings,
+    },
+]
+
+print("=== 基本的なワークフロー: シーケンシャル実行 ===")
+print("タスク構造: research → analysis → report\n")
+
+# 1. ワークフロー作成
+print("1. ワークフローを作成...")
+create_result = agent.tool.workflow(
+    action="create",
+    workflow_id="energy_report",
+    tasks=tasks,
 )
+print(f"   作成完了: {create_result}\n")
 
-# ワークフローの作成
-print("=== 基本的なワークフローの作成 ===")
-print("タスク: レポート作成（調査→分析→執筆）\n")
+# 2. ワークフロー開始（同期的に完了まで待機）
+print("2. ワークフローを開始...")
+start_result = agent.tool.workflow(
+    action="start",
+    workflow_id="energy_report",
+)
+print(f"   結果: {start_result}\n")
 
-result = agent("""
-以下の3つのタスクをワークフローとして作成してください（実行はまだしないでください）。
-
-1. task_id: research, description: 再生可能エネルギーの現状を調査
-2. task_id: analysis, description: 調査結果を分析, dependencies: ["research"]
-3. task_id: report, description: 分析結果をもとにレポートを作成, dependencies: ["analysis"]
-
-workflow_id は "energy_report" としてください。
-action は "create" を使用してください。
-""")
-
-print("=== 結果 ===")
-print(result)
+# startアクションは同期的に完了を待つため、結果を確認
+start_result_str = str(start_result).lower()
+if "completed successfully" in start_result_str:
+    print("=== ワークフロー完了（成功） ===")
+elif "failed" in start_result_str:
+    print("=== ワークフロー完了（失敗あり） ===")
+else:
+    # 非同期で終わった場合のみステータス確認（通常は不要）
+    print("3. 最終ステータスを確認...")
+    status = agent.tool.workflow(
+        action="status",
+        workflow_id="energy_report",
+    )
+    print(f"   最終ステータス: {status}")
+    print("\n=== ワークフロー完了 ===")
