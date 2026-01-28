@@ -38,5 +38,7 @@ uv sync --extra a2a
 ## 参考リンク
 
 - [Strands Agents Documentation](https://strandsagents.com/)
+- [Multi-Agent Patterns](https://strandsagents.com/latest/documentation/docs/user-guide/concepts/multi-agent/multi-agent-patterns/)
+- [A2A Protocol](https://a2a-protocol.org/)
 - [strands-agents/sdk-python](https://github.com/strands-agents/sdk-python)
 - [strands-agents/samples](https://github.com/strands-agents/samples)

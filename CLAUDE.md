@@ -88,7 +88,7 @@ builder.set_max_node_executions(3)  # 無限ループ防止
 
 ### 3. Swarm
 
-自律的なエージェント群がhandoffで協調。エージェントが会話の文脈を理解して、自律的に引き継ぎ先を決定。
+自律的なエージェント群がhandoffで協調。共有コンテキストを持ち、エージェントが会話の文脈を理解して自律的に引き継ぎ先を決定。
 
 ```python
 from strands import Agent
@@ -107,22 +107,38 @@ swarm = Swarm(
 result = swarm("タスク")
 ```
 
+**特徴:**
+- 共有作業メモリ: すべてのエージェントが過去の作業履歴にアクセス可能
+- handoff_to_agent: エージェント間の自動制御転送ツール
+- 動的タスク分配: エージェントの専門性に基づいた自動割り振り
+
 **Graphとの違い:**
 - Graph: 条件関数（コード）でルーティングを定義
 - Swarm: エージェント（LLM）が文脈を理解してルーティングを判断
 
-**動的ルーティング:** 会話を通じて問題の本質が明らかになり、適切な担当者にhandoff
-
-**バックトラック:** 処理がうまくいかない場合、エージェントが自律的に前のステップに戻る
-
 ### 4. Workflow
 
-決定論的DAG。並列実行可能。strands-agents-toolsから使用。
+決定論的DAG。並列実行可能。strands-agents-toolsの`workflow`ツールを使用。
 
 ```python
-# タスク定義と依存関係管理
-# 独立タスクは並列実行される
+from strands import Agent
+from strands_tools import workflow
+
+agent = Agent(model=model, tools=[workflow])
+
+# プログラム的にワークフローを制御
+agent.tool.workflow(
+    action="create",
+    workflow_id="my_workflow",
+    tasks=[
+        {"task_id": "task1", "description": "最初のタスク"},
+        {"task_id": "task2", "description": "2番目のタスク", "dependencies": ["task1"]},
+    ]
+)
+agent.tool.workflow(action="start", workflow_id="my_workflow")
 ```
+
+**アクション:** create, start, status, pause, resume
 
 ### 5. A2A (Agent-to-Agent)
 
@@ -209,4 +225,6 @@ strands-agents-toolsで提供される主要ツール:
 - [GitHub - sdk-python](https://github.com/strands-agents/sdk-python)
 - [GitHub - samples](https://github.com/strands-agents/samples)
 - [Multi-Agent Patterns](https://strandsagents.com/latest/documentation/docs/user-guide/concepts/multi-agent/multi-agent-patterns/)
+- [Agent-to-Agent (A2A)](https://strandsagents.com/latest/documentation/docs/user-guide/concepts/multi-agent/agent-to-agent/)
+- [A2A Protocol 公式サイト](https://a2a-protocol.org/)
 - [Bedrock AgentCore Runtime](https://strandsagents.com/latest/documentation/docs/user-guide/deploy/deploy_to_bedrock_agentcore/)
