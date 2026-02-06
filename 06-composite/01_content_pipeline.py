@@ -95,13 +95,14 @@ builder.set_entry_point("planning")
 graph = builder.build()
 
 # 実行
-print("=== コンテンツ制作パイプライン（基本版） ===")
-print()
-print("フロー: 企画 → 調査 → 執筆 → レビュー")
-print("各ノードは単純なAgentで構成")
-print()
+if __name__ == "__main__":
+    print("=== コンテンツ制作パイプライン（基本版） ===")
+    print()
+    print("フロー: 企画 → 調査 → 執筆 → レビュー")
+    print("各ノードは単純なAgentで構成")
+    print()
 
-result = graph("「リモートワークの生産性向上」をテーマに記事を作成してください。")
+    result = graph("「リモートワークの生産性向上」をテーマに記事を作成してください。")
 
-print("=== 最終結果 ===")
-print(result)
+    print("=== 最終結果 ===")
+    print(result)

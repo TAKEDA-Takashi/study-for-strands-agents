@@ -128,15 +128,16 @@ builder.set_entry_point("planning")
 graph = builder.build()
 
 # 実行
-print("=== コンテンツ制作パイプライン（Graph + Swarm） ===")
-print()
-print("フロー: 企画(Swarm) → 調査 → 執筆 → レビュー")
-print()
-print("企画フェーズの内部:")
-print("  editor → marketer → content_writer（協議してまとめる）")
-print()
+if __name__ == "__main__":
+    print("=== コンテンツ制作パイプライン（Graph + Swarm） ===")
+    print()
+    print("フロー: 企画(Swarm) → 調査 → 執筆 → レビュー")
+    print()
+    print("企画フェーズの内部:")
+    print("  editor → marketer → content_writer（協議してまとめる）")
+    print()
 
-result = graph("「リモートワークの生産性向上」をテーマに記事を作成してください。")
+    result = graph("「リモートワークの生産性向上」をテーマに記事を作成してください。")
 
-print("=== 最終結果 ===")
-print(result)
+    print("=== 最終結果 ===")
+    print(result)
