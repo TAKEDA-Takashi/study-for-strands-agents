@@ -11,11 +11,11 @@ A2Aプロトコルでサーバーに接続し、リモートエージェント�
 """
 
 import asyncio
-import uuid
+from uuid import uuid4
 
 import httpx
-from a2a.client import A2AClient
-from a2a.types import Message, MessageSendParams, Part, Role, SendMessageRequest, TextPart
+from a2a.client import A2ACardResolver, ClientConfig, ClientFactory
+from a2a.types import Message, Part, Role, TextPart
 
 A2A_SERVER_URL = "http://127.0.0.1:9000"
 
@@ -24,44 +24,39 @@ async def main():
     print("=== A2Aクライアント ===")
     print(f"接続先: {A2A_SERVER_URL}\n")
 
-    async with httpx.AsyncClient() as httpx_client:
-        # A2Aクライアントの作成
-        client = A2AClient(httpx_client=httpx_client, url=A2A_SERVER_URL)
-
+    async with httpx.AsyncClient(timeout=300) as httpx_client:
         # エージェントカードの取得（サーバー情報の確認）
         print("--- エージェント情報の取得 ---")
-        agent_card = await client.get_card()
+        resolver = A2ACardResolver(httpx_client=httpx_client, base_url=A2A_SERVER_URL)
+        agent_card = await resolver.get_agent_card()
         print(f"エージェント名: {agent_card.name}")
         print(f"説明: {agent_card.description}")
         print()
 
+        # ClientFactoryでクライアントを作成
+        config = ClientConfig(httpx_client=httpx_client, streaming=False)
+        factory = ClientFactory(config)
+        client = factory.create(agent_card)
+
         # メッセージの送信
         print("--- メッセージ送信: 計算リクエスト ---")
         message = Message(
-            message_id=str(uuid.uuid4()),
             role=Role.user,
-            parts=[Part(root=TextPart(text="100 + 200 * 3 を計算してください"))],
+            parts=[Part(TextPart(text="100 + 200 * 3 を計算してください"))],
+            message_id=uuid4().hex,
         )
-        request = SendMessageRequest(
-            id=str(uuid.uuid4()),
-            params=MessageSendParams(message=message),
-        )
-        response = await client.send_message(request)
-        print(f"レスポンス: {response}")
+        async for event in client.send_message(message):
+            print(f"レスポンス: {event}")
         print()
 
         print("--- メッセージ送信: 挨拶リクエスト ---")
         message2 = Message(
-            message_id=str(uuid.uuid4()),
             role=Role.user,
-            parts=[Part(root=TextPart(text="田中さんに挨拶してください"))],
+            parts=[Part(TextPart(text="田中さんに挨拶してください"))],
+            message_id=uuid4().hex,
         )
-        request2 = SendMessageRequest(
-            id=str(uuid.uuid4()),
-            params=MessageSendParams(message=message2),
-        )
-        response2 = await client.send_message(request2)
-        print(f"レスポンス: {response2}")
+        async for event in client.send_message(message2):
+            print(f"レスポンス: {event}")
 
 
 if __name__ == "__main__":

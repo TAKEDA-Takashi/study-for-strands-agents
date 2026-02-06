@@ -159,12 +159,26 @@ server = A2AServer(agent=agent)
 server.serve()
 ```
 
-**クライアント:**
+**クライアント（A2AClientToolProvider）:**
 ```python
-from strands.multiagent.a2a import A2AClientToolProvider
+from strands_tools.a2a_client import A2AClientToolProvider
 
 provider = A2AClientToolProvider(known_agent_urls=["http://127.0.0.1:9000"])
 agent = Agent(tools=provider.tools)
+```
+
+**クライアント（直接使用）:**
+```python
+from a2a.client import A2ACardResolver, ClientConfig, ClientFactory
+
+resolver = A2ACardResolver(httpx_client=httpx_client, base_url="http://127.0.0.1:9000")
+agent_card = await resolver.get_agent_card()
+
+config = ClientConfig(httpx_client=httpx_client, streaming=False)
+client = ClientFactory(config).create(agent_card)
+
+async for event in client.send_message(message):
+    print(event)
 ```
 
 ### 6. Composite（複合パターン）

@@ -10,11 +10,11 @@
 
 import asyncio
 import threading
-import uuid
+from uuid import uuid4
 
 import httpx
-from a2a.client import A2AClient
-from a2a.types import Message, MessageSendParams, Part, Role, SendMessageRequest, TextPart
+from a2a.client import A2ACardResolver, ClientConfig, ClientFactory
+from a2a.types import Message, Part, Role, TextPart
 from strands import Agent, tool
 from strands.models.bedrock import BedrockModel
 from strands.multiagent.a2a import A2AServer
@@ -73,31 +73,31 @@ async def run_client():
 
     print("--- クライアントからサーバーに接続 ---\n")
 
-    async with httpx.AsyncClient() as httpx_client:
-        client = A2AClient(httpx_client=httpx_client, url="http://127.0.0.1:9001")
-
-        # エージェント情報の取得
+    async with httpx.AsyncClient(timeout=300) as httpx_client:
+        # エージェントカードの取得
         try:
-            agent_card = await client.get_card()
+            resolver = A2ACardResolver(httpx_client=httpx_client, base_url="http://127.0.0.1:9001")
+            agent_card = await resolver.get_agent_card()
             print(f"接続成功！エージェント: {agent_card.name}")
             print()
         except Exception as e:
             print(f"接続エラー: {e}")
             return
 
+        # ClientFactoryでクライアントを作成
+        config = ClientConfig(httpx_client=httpx_client, streaming=False)
+        factory = ClientFactory(config)
+        client = factory.create(agent_card)
+
         # 翻訳リクエスト
         print("--- 翻訳リクエスト送信 ---")
         message = Message(
-            message_id=str(uuid.uuid4()),
             role=Role.user,
-            parts=[Part(root=TextPart(text="「こんにちは」を英語に翻訳してください"))],
+            parts=[Part(TextPart(text="「こんにちは」を英語に翻訳してください"))],
+            message_id=uuid4().hex,
         )
-        request = SendMessageRequest(
-            id=str(uuid.uuid4()),
-            params=MessageSendParams(message=message),
-        )
-        response = await client.send_message(request)
-        print(f"レスポンス: {response}")
+        async for event in client.send_message(message):
+            print(f"レスポンス: {event}")
 
 
 async def main():
